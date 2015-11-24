@@ -316,7 +316,7 @@ class RequestTracker{
             return $response['body'];
         }
         else if($format=='l'){
-            return $response['body'];
+            $responseArray = $this->parseMultiLineResponse($response);
         }
 
         return $responseArray;
@@ -342,6 +342,39 @@ class RequestTracker{
         }
 
         return $responseArray;
+    }
+    
+    private function parseMultiLineResponse($response, $delimiter = ':', $ticketdelimiter = '--') {
+        $responseArray = array();
+        $response = explode(chr(10), $response['body']);
+        array_shift($response); //skip RT status response
+        array_shift($response); //skip blank line
+        $currentid = 0;
+
+        foreach ($response as $line) {
+            if (substr($line, 0, 1) == ' ') {
+                $responseArray[$lastkey] .= "\n" . trim($line);
+                continue;
+            }
+            if (substr($line, 0, strlen($ticketdelimiter)) == $ticketdelimiter) {
+                continue;
+            }
+
+            $parts = explode($delimiter, $line);
+            if ($parts[0] == "id") {
+                $currentid = trim(str_replace("ticket/", "", $parts[1]));
+            } else if ($parts[0] == ""){
+                continue;
+            }else {
+                $key = array_shift($parts);
+                $value = implode($delimiter, $parts);
+                $responseArray[$currentid][$key] = trim($value);
+                $lastkey = $key;
+            }
+        }
+
+        return $responseArray;
+
     }
     
     private function parseArray($contentArray){
